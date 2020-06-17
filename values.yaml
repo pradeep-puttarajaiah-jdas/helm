@@ -1,0 +1,308 @@
+#### Note:  Labels previously used in helm charts have been replaced by the following:
+# heritage is replaced by app.kubernetes.io/managed-by: and is included in "refs.labels" by default
+# release is replaced by app.kubernetes.io/instance: and is included in "refs.labels" and "refs.selectorLabels" by default
+# app is app.kubernetes.io/name: and is included in "refs.labels" and "refs.selectorLabels" by default
+# chart is replace by helm.sh/chart: and is included in "refs.labels" by default
+
+# GLobal settings that when set would affect all templates or the entire deployment.
+global:
+  # Add these labels to all deployed API objects.
+  labels: {
+    app.kubernetes.io/part-of: "wms",
+    app.kubernetes.io/component: "{{ .Release.Name }}"
+  }
+
+# Override the chart full name (see _helpers.tpl)
+fullnameOverride: {}
+
+# External references required by this chart.
+sqlHost: null
+sqlDbName: null
+sqlUser: null
+sqlPassword: null
+refsHost: refs-internal
+refsPort: 8090
+
+# NOTE: Feature Toggles
+# Using Nested values is recommended, as it can add clarity to feature toggles that have a number of options
+# when enabled, and even for those that do not it helps to maintain a consistent design language
+# When using a feature toggle value, please use true/false for the value and enabled: as the key name whenever possible to keep a consistant design languge
+# If you need to pass a 0/1 in the template yaml (say for an environment variable), use the int function to translate true/false to 1/0 respectively
+#    for example:             
+#          env:
+#            - name: CONFIG_PSR
+#              value: {{ int .Values.psr.enabled | quote }}
+# 
+
+# Feature toggle: Are we in a PSR test?
+psr:
+  enabled: false
+
+# Feature toggle: Are we using an ImagePullSecret?
+imagePullSecret:
+  enabled: false
+  name: null
+
+# Replica count within our replication controller.
+replicaCount: 1
+
+# kind: Deployment - This is our primary vehicle for running our application container
+deployment:
+  labels: {}
+  annotations: {}
+  podSecurityContext: {}
+  template:
+    labels: {}
+    annotations: {}
+  # This YAML list is iterated over and it's values used to define as many volumes as needed. Leave [] for none
+  volumes:
+    - name: volume-logs
+      persistentVolumeClaim:
+        claimName: "{{ (index .Values.persistentVolumeClaim 0).name }}" # Logs
+    - name: volume-appd
+      persistentVolumeClaim:
+        claimName: "{{ (index .Values.persistentVolumeClaim 1).name }}" # App Dynamics
+
+# dbUpgrade Job
+#  - By default this kind: job will run as a pre-upgrade job when executing a helm upgrade.  
+#    Set installHook to true if you need to run it when executing a helm install. The kind: job
+#    Will use the ServiceAccount, securityContext, default labels, nodeSelector, affinity, tolerations as 
+#    the wms container/deployment. 
+dbUpgrade:
+  installHook: false
+  name: dbupgradejob
+  backoffLimit: 2
+  restartPolicy: Never
+  annotations: {}
+  labels: {}
+  resources: {}
+  enabled: 1
+  
+# WMS Container
+wms:
+  securityContext: {}
+  envJavaVMargs: "-javaagent:/appd/appdserveragent/javaagent.jar -Dappdynamics.agent.tierName=MOCA_AKS_DEMO -Dappdynamics.agent.nodeName=MOCA_AKS_DEMO_$(POD_NAME)"
+  # This YAML list is iterated over and it's values used to define as many ports as needed. Leave [] for none
+  ports: 
+    - name: mobile1
+      containerPort: 8080
+      protocol: TCP  
+    - name: moca
+      containerPort: 10000
+      protocol: TCP
+    - name: mtf
+      containerPort: 10020
+      protocol: TCP    
+    - name: voclut
+      containerPort: 5200
+      protocol: TCP
+    - name: vocodr
+      containerPort: 5202
+      protocol: TCP   
+  imageRepository: systemteamakr.azurecr.io/xb-wm-app-release-2020.1
+  imageTag: '20200601.113506'
+  imagePullPolicy: Always
+  # This YAML list is iterated over and it's values used to define as volume mounts as needed. Leave [] for none
+  volumeMounts:
+    - mountPath: /by/sce/env/log
+      subPathExpr: $(POD_NAME)
+      name: "{{ (index .Values.deployment.volumes 0).name }}" # Logs
+    - mountPath: "/appd"
+      subPathExpr: $(POD_NAME)
+      name: "{{ (index .Values.deployment.volumes 1).name }}" # App Dynamics
+  # startupProbe needs Kubernetes v1.16 alpha version
+  startupProbe: {}
+  readinessProbe:
+    tcpSocket:
+      port: 10000
+    initialDelaySeconds: 120
+    periodSeconds: 20
+    successThreshold: 1
+    failureThreshold: 4
+    timeoutSeconds: 2      
+  livenessProbe: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+
+# AppDynamics container (InitContainer)
+appd:
+  securityContext: {}
+  imageRepository: systemteamakr.azurecr.io/appd-sidecar-container
+  imageTag: v2
+  imagePullPolicy: Always
+  # This YAML list is iterated over and it's values used to define as volume mounts as needed. Leave [] for none
+  volumeMounts: 
+    - mountPath: "/appd"
+      subPathExpr: $(POD_NAME)
+      name: "{{ (index .Values.deployment.volumes 1).name }}" # App Dynamics
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+
+# Using tpl in helm template seems to only generate strings, so it's not viable for integer interpolation.
+#  Aka targetPort: "{{ (index .Values.wms.ports 0).containerPort }}" 
+#  generates  targetPort: '10080'  which is a string, that's not going to work.
+#    Thankfully in this case we can use the port name, like targetPort: "{{ (index .Values.wms.ports 0).name }}"
+# This YAML list is iterated over and it's values used to create as many services as needed. Leave [] for none
+service:
+  - name: wms-internal
+    type: ClusterIP
+    ports: # Kind: Service ports: yaml. Please adjust according to your service type. Leave [] for none
+    - name: mobile1
+      protocol: "{{ (index .Values.wms.ports 0).protocol }}"
+      port: 8080
+      targetPort: "{{ (index .Values.wms.ports 0).name }}"
+    - name: moca
+      protocol: "{{ (index .Values.wms.ports 1).protocol }}"
+      port: 4500
+      targetPort: "{{ (index .Values.wms.ports 1).name }}"
+    - name: wms-mtf
+      protocol: "{{ (index .Values.wms.ports 2).protocol }}"
+      port: 4510
+      targetPort: "{{ (index .Values.wms.ports 2).name }}"
+    - name: wms-voclut
+      protocol: "{{ (index .Values.wms.ports 3).protocol }}"
+      port: 5200
+      targetPort: "{{ (index .Values.wms.ports 3).name }}"
+    - name: wms-vocodr
+      protocol: "{{ (index .Values.wms.ports 4).protocol }}"
+      port: 5202
+      targetPort: "{{ (index .Values.wms.ports 4).name }}"
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    selector: {} # Variables are supported as long as they are passed as yaml strings
+  - name: wms-mobile1-external
+    type: ClusterIP
+    ports: # Kind: Service ports: yaml. Please adjust according to your service type. Leave [] for none
+    - name: mobile1
+      protocol: "{{ (index .Values.wms.ports 0).protocol }}"
+      port: 8080
+      targetPort: "{{ (index .Values.wms.ports 0).name }}"
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    selector: {} # Variables are supported as long as they are passed as yaml strings
+  - name: wms-moca-external
+    type: ClusterIP
+    ports: # Kind: Service ports: yaml. Please adjust according to your service type. Leave [] for none
+    - name: moca
+      protocol: "{{ (index .Values.wms.ports 1).protocol }}"
+      port: 4500
+      targetPort: "{{ (index .Values.wms.ports 1).name }}"
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    selector: {} # Variables are supported as long as they are passed as yaml strings
+  - name: wms-mtf-external
+    type: ClusterIP
+    ports: # Kind: Service ports: yaml. Please adjust according to your service type. Leave [] for none
+    - name: wms-mtf
+      protocol: "{{ (index .Values.wms.ports 2).protocol }}"
+      port: 4510
+      targetPort: "{{ (index .Values.wms.ports 2).name }}"
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    selector: {} # Variables are supported as long as they are passed as yaml strings
+  - name: wms-voice-external
+    type: ClusterIP
+    ports: # Kind: Service ports: yaml. Please adjust according to your service type. Leave [] for none
+    - name: wms-voclut
+      protocol: "{{ (index .Values.wms.ports 3).protocol }}"
+      port: 5200
+      targetPort: "{{ (index .Values.wms.ports 3).name }}"
+    - name: wms-vocodr
+      protocol: "{{ (index .Values.wms.ports 4).protocol }}"
+      port: 5202
+      targetPort: "{{ (index .Values.wms.ports 4).name }}"
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    selector: {} # Variables are supported as long as they are passed as yaml strings
+
+# This YAML list is iterated over and it's values used to create as many dynamic persistantVolumeClaims as needed. Leave [] for none
+persistentVolumeClaim:
+  - name: wms-azurefile-logs
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    accessModes: 
+      - ReadWriteMany
+    storageClassName: azure-file-standard-lrs
+    requestsStorage: 5Gi
+  - name: wms-azurefile-appd
+    annotations: {} # Variables are supported as long as they are passed as yaml strings
+    labels: {} # Variables are supported as long as they are passed as yaml strings
+    accessModes: 
+      - ReadWriteMany
+    storageClassName: azure-file-standard-lrs
+    requestsStorage: 5Gi
+
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Labels to add to the service account (beyond the default wms.labels)
+  labels: {}
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+  
+# This YAML list is iterated over and it's values used to create as many kind: ingress as needed. Leave [] for none
+ingress:
+  - name: wms-mobile1-ingress
+    labels: {} # Variables are supported as long as they are passed as yaml strings  
+    # Variables are supported as long as they are passed as yaml strings
+    annotations:  
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+    rules: # Kind: ingress rules: yaml. Please adjust according to your ingress needs. Leave [] for none
+    - http:
+        paths:
+        - path: /wms/mobile1(/|$)(.*)
+          backend:
+            serviceName: "{{ (index .Values.service 1).name }}" # wms-mobile1-external
+            servicePort: "{{ (index (index .Values.service 1).ports 0).name }}"
+  - name: wms-moca-ingress
+    labels: {} # Variables are supported as long as they are passed as yaml strings  
+    # Variables are supported as long as they are passed as yaml strings
+    annotations:  
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+    rules: # Kind: ingress rules: yaml. Please adjust according to your ingress needs. Leave [] for none
+    - http:
+        paths:
+        - path: /wms/moca(/|$)(.*)
+          backend:
+            serviceName: "{{ (index .Values.service 2).name }}" # wms-moca-external
+            servicePort: "{{ (index (index .Values.service 2).ports 0).name }}"
+  - name: wms-mtf-ingress
+    labels: {} # Variables are supported as long as they are passed as yaml strings  
+    # Variables are supported as long as they are passed as yaml strings
+    annotations:  
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+    rules: # Kind: ingress rules: yaml. Please adjust according to your ingress needs. Leave [] for none
+    - http:
+        paths:
+        - path: /wms/mtf(/|$)(.*)
+          backend:
+            serviceName: "{{ (index .Values.service 3).name }}" # wms-mtf-external
+            servicePort: "{{ (index (index .Values.service 3).ports 0).name }}"
+  - name: wms-voice-ingress
+    labels: {} # Variables are supported as long as they are passed as yaml strings  
+    # Variables are supported as long as they are passed as yaml strings
+    annotations:  
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+    rules: # Kind: ingress rules: yaml. Please adjust according to your ingress needs. Leave [] for none
+    - http:
+        paths:
+        - path: /wms/voclut/(.*)
+          backend:
+            serviceName: "{{ (index .Values.service 4).name }}" # wms-voice-external
+            servicePort: "{{ (index (index .Values.service 4).ports 0).name }}"
+        - path: /wms/vocodr/(.*)
+          backend:
+            serviceName: "{{ (index .Values.service 4).name }}" # wms-voice-external
+            servicePort: "{{ (index (index .Values.service 4).ports 1).name }}"
