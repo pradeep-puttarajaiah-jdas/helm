@@ -9,7 +9,7 @@ pipeline {
   agent { label 'linux_onprem' }
   options {
     disableConcurrentBuilds()
-  }}
+  }
 
   stages {
     stage('Package and publish to Artifactory') {
@@ -28,7 +28,7 @@ pipeline {
             }
             println "Helm chart(s) will be published with version ${releaseVersion}."
           }
-        }}
+        }
 
         withAzureKeyvault(
               azureKeyVaultSecrets: [
