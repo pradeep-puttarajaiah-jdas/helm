@@ -9,7 +9,7 @@ pipeline {
   agent { label 'linux_onprem' }
   options {
     disableConcurrentBuilds()
-  }}
+  }
 
   stages {
     stage('Package and publish to Artifactory') {
