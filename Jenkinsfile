@@ -1,3 +1,4 @@
+properties([pipelineTriggers([githubPush()])]
 import org.yaml.snakeyaml.DumperOptions
 import groovy.json.JsonSlurperClassic
 
