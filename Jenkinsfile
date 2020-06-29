@@ -9,6 +9,7 @@ pipeline {
                 }
                 git clone https://github.com/pradeep-puttarajaiah-jdas/helm.git
             }
+        }
         stage('Helm Linting') {
             steps {
                 helm lint C:\helm\windows-amd64
