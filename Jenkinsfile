@@ -1,18 +1,11 @@
 pipeline {
-    agent any
-    stages {
-        stage('Checkout to sub-dir') {
-            steps {
-                dir('subDir') {
-                checkout scm
-                }
-            }
-        }
+   agent any
+   stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out to helm..'
-                git url: https://github.com/pradeep-puttarajaiah-jdas/helm.git
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'jenkins-user-github', url: 'https://github.com/aakashsehgal/FMU.git']]])
+                sh "ls -lart ./*"
             }
-        }
+        }     
     }
 }
