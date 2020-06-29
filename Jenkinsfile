@@ -2,23 +2,18 @@ pipeline {
     agent any
 
     stages {
-        stage('checkout to helm') {
-            steps {
-                echo 'Checking out to helm..'
-                cd C:\helm\windows-amd64
-            }
         stage('Clone repository') {
             steps {
-                echo 'clone repository to local'
+                echo 'Checking out to helm..'
                 git clone https://github.com/pradeep-puttarajaiah-jdas/helm.git
             }
-        }
         stage('Helm Linting') {
             steps {
-                helm lint C:\helm\windows-amd64\helm
+                helm lint C:\helm\windows-amd64
             }
         }
-            stage('Chart-testing') {
+        stage('Chart-testing') {
+            steps {
                 helm test my-release
             }
         }
