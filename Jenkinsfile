@@ -2,19 +2,24 @@ pipeline {
     agent any
 
     stages {
-        stage('Buid') {
+        stage('checkout to helm') {
             steps {
-                echo 'Building..'
+                echo 'Checking out to helm..'
+                cd C:\helm\windows-amd64
+            }
+        stage('Clone repository') {
+            steps {
+                echo 'clone repository to local'
+                git clone https://github.com/pradeep-puttarajaiah-jdas/helm.git
             }
         }
-        stage('Test') {
+        stage('Helm Linting') {
             steps {
-                echo 'Testing..'
+                helm lint C:\helm\windows-amd64\helm
             }
         }
-        stage('Deployment') {
-            steps {
-                echo 'Deploying....'
+            stage('Chart-testing') {
+                helm test my-release
             }
         }
     }
