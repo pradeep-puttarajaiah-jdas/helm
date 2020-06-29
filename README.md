@@ -20,3 +20,4 @@ The automation steps done by Jenkins is as follows:
 # Requirements
 
 Helm [3.1.0](https://github.com/helm/helm/releases/tag/v3.1.0)
+Helm test
