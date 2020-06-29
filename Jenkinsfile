@@ -1,13 +1,17 @@
 pipeline {
     agent any
     stages {
-        stage('Clone repository') {
+        stage('Checkout to sub-dir') {
             steps {
-                echo 'Checking out to helm..'
                 dir('subDir') {
                 checkout scm
                 }
-                git clone https://github.com/pradeep-puttarajaiah-jdas/helm.git
+            }
+        }
+        stage('Checkout repository') {
+            steps {
+                echo 'Checking out to helm..'
+                git url: https://github.com/pradeep-puttarajaiah-jdas/helm.git
             }
         }
         stage('Helm Linting') {
