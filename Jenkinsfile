@@ -8,7 +8,7 @@ pipeline {
                 }
             }
         }
-        stage('Checkout') {
+        stage('Checkout repo') {
             steps {
                 echo 'Checking out to helm..'
                 git url: https://github.com/pradeep-puttarajaiah-jdas/helm.git
