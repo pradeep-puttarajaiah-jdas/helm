@@ -4,6 +4,9 @@ pipeline {
         stage('Clone repository') {
             steps {
                 echo 'Checking out to helm..'
+                dir('subDir') {
+                checkout scm
+                }
                 git clone https://github.com/pradeep-puttarajaiah-jdas/helm.git
             }
         stage('Helm Linting') {
