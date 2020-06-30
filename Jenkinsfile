@@ -8,12 +8,14 @@ pipeline {
            git credentialsId: 'pradeep-puttarajaiah-jdas', url: 'https://github.com/pradeep-puttarajaiah-jdas/helm.git'
            // Do a ls -lart to view all the files are cloned. It will be clonned. This is just for you to be sure about it.
            sh "ls -lart ./*" 
-           // Linting
-           sh 'helm lint'
-           // Chart testing
-           sh 'helm test my-release'
-          }
-       }
+        }
+      }
     }
-  }
+    stage('Linting') {
+       sh 'helm lint [https://github.com/pradeep-puttarajaiah-jdas/helm.git | Chart.yaml]'
+    }
+    stage('Chart-testing') {
+       sh 'helm test my-release'
+    }
+   }
 }
