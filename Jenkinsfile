@@ -18,7 +18,7 @@ pipeline {
     }
     stage('Chart-testing') {
        steps {
-          sh 'helm test my-release'
+          sh 'helm list'
        }
     }
    }
