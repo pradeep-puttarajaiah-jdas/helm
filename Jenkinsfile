@@ -12,10 +12,18 @@ pipeline {
       }
     }
     stage('Linting') {
-       sh 'helm lint [https://github.com/pradeep-puttarajaiah-jdas/helm.git | Chart.yaml]'
+       steps {
+          script {
+             sh 'helm lint [https://github.com/pradeep-puttarajaiah-jdas/helm.git | Chart.yaml]'
+          }
+       }
     }
     stage('Chart-testing') {
-       sh 'helm test my-release'
+       steps {
+          script {
+             sh 'helm test my-release'
+          }
+       }
     }
    }
 }
