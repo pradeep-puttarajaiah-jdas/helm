@@ -8,10 +8,10 @@ pipeline {
                 //sh "ls -lart ./*"
             }
         }
+   }
+}
        // stage('Linting') {
          //  steps {
            //   helm lint c:\wms\execution-ci\work\workspace\helm-chart
            //}
-        //}
-   }
-}
+      //}
