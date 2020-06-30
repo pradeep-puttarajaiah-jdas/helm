@@ -14,7 +14,7 @@ pipeline {
     stage('Linting') {
        steps {
           script {
-             sh 'helm lint url: https://github.com/pradeep-puttarajaiah-jdas/helm.git'
+             sh 'helm lint'
           }
        }
     }
