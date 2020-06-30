@@ -16,9 +16,14 @@ pipeline {
           sh 'helm lint'
        }
     }
-    stage('Chart-testing') {
+    stage('List Releases') {
        steps {
           sh 'helm list'
+       }
+    }
+    stage('Chart-testing') {
+       steps {
+          sh 'helm test logistics-wms'
        }
     }
    }
