@@ -10,7 +10,7 @@ pipeline {
            sh "ls -lart ./*" 
            // List all branches in your repo. 
            sh "git branch -a"
-           sh 'helm list'
+           sh 'kubectl get pods'
           }
        }
     }
