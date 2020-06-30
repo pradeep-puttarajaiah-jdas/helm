@@ -10,7 +10,10 @@ pipeline {
            sh "ls -lart ./*" 
            // List all branches in your repo. 
            sh "git branch -a"
+           // Linting
            sh 'helm lint'
+           // Chart testing
+           sh 'helm test'
           }
        }
     }
