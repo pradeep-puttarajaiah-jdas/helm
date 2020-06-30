@@ -23,7 +23,7 @@ pipeline {
     }
     stage('Chart-testing') {
        steps {
-          sh 'helm test logistics-wms'
+          sh 'helm test logistics-refs'
        }
     }
    }
