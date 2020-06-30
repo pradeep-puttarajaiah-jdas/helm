@@ -13,16 +13,12 @@ pipeline {
     }
     stage('Linting') {
        steps {
-          script {
-             sh 'helm lint'
-          }
+          sh 'helm lint'
        }
     }
     stage('Chart-testing') {
        steps {
-          script {
-             sh 'helm test my-release'
-          }
+          sh 'helm test my-release'
        }
     }
    }
