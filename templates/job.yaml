@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.dbUpgrade.name }}
+  labels:
+    {{- /* Include the common labels */ -}}
+    {{- include "wms.labels" . | nindent 4 }}
+    {{- /* Include any labels unique to this service */ -}}
+    {{- /* It is not using indent because the indent of the function is used */ -}}
+    {{- if .Values.dbUpgrade.labels }}
+    {{ tpl (toYaml .Values.dbUpgrade.labels) . | nindent 4}}
+    {{- end }}
+  annotations:
+  {{- if .Values.dbUpgrade.annotations }}
+{{ tpl (toYaml .Values.dbUpgrade.annotations) . | nindent 4 }}
+  {{- end }}
+{{ if .Values.dbUpgrade.installHook }}
+     "helm.sh/hook": "pre-install,pre-upgrade"
+{{ else }}
+     "helm.sh/hook": "pre-upgrade"
+{{ end }}
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "wms.serviceAccountName" . }}
+      {{- if .Values.deployment.podSecurityContext }}
+      securityContext:
+{{- tpl (toYaml .Values.deployment.podSecurityContext) . | nindent 8}}
+      {{- end }}
+      {{ if .Values.imagePullSecret.enabled }}
+      imagePullSecrets:
+        - name: {{ .Values.imagePullSecret.name }}
+      {{ end }}
+      containers:
+      - name: {{ .Values.dbUpgrade.name }}
+        image: "{{ .Values.wms.imageRepository }}:{{ .Values.wms.imageTag }}"
+        imagePullPolicy: {{ .Values.wms.imagePullPolicy }}
+        {{- if .Values.wms.securityContext }}
+        securityContext:
+{{- tpl (toYaml .Values.wms.securityContext) . | nindent 10}}
+        {{- end }}
+        env:
+          - name: DB_UPGRADE
+            value: {{ int .Values.dbUpgrade.enabled | quote }}
+          - name: TARGET_DB_HOST
+            value: {{ default "" .Values.sqlHost | quote }}
+          - name: TARGET_DB_NAME
+            value: {{ default "" .Values.sqlDbName | quote }}
+          - name: TARGET_DB_USR
+            value: {{ default "" .Values.sqlUser | quote }}
+          - name: TARGET_DB_PSW
+            value: {{ default "" .Values.sqlPassword | quote }}
+          - name: TARGET_REFS_HOST
+            value: {{ default "" .Values.refsHost | quote }}
+          - name: TARGET_REFS_HOST_PORT
+            value: {{ default "" .Values.refsPort | quote }}
+        {{- with .Values.wms.nodeSelector }}
+        nodeSelector:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.wms.affinity }}
+        affinity:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.wms.tolerations }}
+        tolerations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- if .Values.dbUpgrade.resources }}
+        resources:
+        {{- toYaml .Values.dbUpgrade.resources | nindent 10 }}
+        {{- end }}
+      restartPolicy: {{ .Values.dbUpgrade.restartPolicy }}
+  backoffLimit: {{ .Values.dbUpgrade.backoffLimit }}
