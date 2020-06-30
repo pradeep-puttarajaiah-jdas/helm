@@ -32,7 +32,7 @@ pipeline {
     stage('Chart-testing') {
        steps {
           script {
-             sh 'helm test logistics-res'
+             sh 'helm test logistics-refs'
              sh 'kubectl describe pod logistics-refs'
           }
        }
