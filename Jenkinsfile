@@ -11,6 +11,13 @@ pipeline {
         }
       }
     }
+    stage('helm update') {
+       steps {
+          scripts {
+             //sh 'helm repo update'
+             sh 'helm dependency update'
+       }
+    }
     stage('Linting') {
        steps {
           sh 'helm lint'
@@ -23,7 +30,8 @@ pipeline {
     }
     stage('Chart-testing') {
        steps {
-          sh 'helm test logistics-refs'
+          sh 'helm test logistics-res'
+          sh 'kubectl describe pod logistics-refs'
        }
     }
    }
