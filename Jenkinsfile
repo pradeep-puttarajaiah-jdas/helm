@@ -33,6 +33,7 @@ pipeline {
        steps {
           script {
              sh 'helm test logistics-refs'
+             sh 'helm test my-release'
           }
        }
     }
