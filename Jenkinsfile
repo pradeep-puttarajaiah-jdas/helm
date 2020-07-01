@@ -33,6 +33,7 @@ pipeline {
        steps {
           script {
              sh 'helm test logistics-refs'
+             sh 'kubectl describe pod logistics-refs'
           }
        }
     }
