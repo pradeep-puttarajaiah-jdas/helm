@@ -11,7 +11,7 @@ pipeline {
         }
       }
     }
-    stage('helm update') {
+    stage('helm dependency update') {
        steps {
           script {
              //sh 'helm repo update'
