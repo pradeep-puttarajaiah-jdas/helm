@@ -32,7 +32,7 @@ pipeline {
     stage('Chart-testing') {
        steps {
           script {
-             sh 'helm test logistics-refs'
+             sh 'helm test my-release'
           }
        }
     }
