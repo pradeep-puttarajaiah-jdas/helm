@@ -1,0 +1,34 @@
+{{- /* This is a comment that isn't echoed to screen OR yaml sent to kubernetes*/ -}}
+{{- /* We are going to loop and create as many services as we need */ -}}
+{{- range .Values.service }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .name }}
+  name: {{ .name }}
+  {{- else }}
+  name: {{ template "wms.fullname" $ }}
+  {{- end }}
+  labels:
+    {{- /* Include the common labels */ -}}
+    {{- include "wms.labels" $ | nindent 4 }}
+    {{- /* Include any labels unique to this service */ -}}
+    {{- /* It is not using indent because the indent of the function is used */ -}}
+    {{- if .labels }}
+    {{ tpl (toYaml .labels) $ }}
+    {{- end }}
+  {{- if .annotations }}
+  annotations:
+    {{ tpl (toYaml .annotations) $ }}
+  {{- end }}
+spec:
+  type: {{ .type }}
+  ports:
+{{ tpl (toYaml .ports) $ | indent 4 }}
+  selector:
+    {{- include "wms.selectorLabels" $ | nindent 4 }}
+    {{- if .selector }}
+{{ tpl (toYaml .selector) $ | indent 4}}
+  {{- end }}
+{{- end }}
